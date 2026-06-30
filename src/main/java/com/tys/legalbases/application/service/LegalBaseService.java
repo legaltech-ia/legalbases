@@ -1,6 +1,7 @@
 package com.tys.legalbases.application.service;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
+import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.mappers.NationalNormMapper;
@@ -84,5 +85,17 @@ public class LegalBaseService {
         var entity  = nationalNormMapper.toEntity(data);
         entity.setSourceUrl(urlName);
         this.nationalNormRepository.save(entity);
+    }
+
+    public List<LegalBaseDTO> findAll() {
+        return  nationalNormRepository.findAll()
+                .stream()
+                .map(nationalNormMapper::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LegalBaseRagDTO> findAllForRag() {
+        return nationalNormMapper.toRagDtoList(nationalNormRepository.findAllWithArticles());
     }
 }

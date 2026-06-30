@@ -1,6 +1,7 @@
 package com.tys.legalbases.infrastructure.controller;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
+import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.service.LegalBaseService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -22,7 +24,7 @@ public class LegalBaseController {
 
     private final LegalBaseService LegalBaseservice;
 
-    @GetMapping
+    @GetMapping(AppConstants.API_NATIONAL_NORMS_BY_CRITERIA)
     public ResponseEntity<PagedResponseDTO<LegalBaseDTO>> getAllLegalBases(
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0")  int page,
@@ -62,5 +64,16 @@ public class LegalBaseController {
     ) {
         this.LegalBaseservice.save(data, file);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<List<LegalBaseDTO>> getAllLegalBases() {
+        List<LegalBaseDTO> legalBases = LegalBaseservice.findAll();
+        return ResponseEntity.ok(legalBases);
+    }
+
+    @GetMapping(AppConstants.API_NATIONAL_NORMS_RAG_PATH)
+    public ResponseEntity<List<LegalBaseRagDTO>> getAllLegalBasesForRag() {
+        return ResponseEntity.ok(LegalBaseservice.findAllForRag());
     }
 }

@@ -1,6 +1,9 @@
 package com.tys.legalbases.application.mappers;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
+import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
+import com.tys.legalbases.application.dtos.NationalNormArticleDTO;
+import com.tys.legalbases.domain.model.entity.ArticleEntity;
 import com.tys.legalbases.domain.model.entity.NationalNormEntity;
 import com.tys.legalbases.infrastructure.external.dtos.DatosGovCoNormDTO;
 import org.mapstruct.Mapper;
@@ -15,8 +18,11 @@ public interface NationalNormMapper {
     NationalNormMapper INSTANCE = Mappers.getMapper(NationalNormMapper.class);
 
     LegalBaseDTO toDto(NationalNormEntity entity);
+    LegalBaseRagDTO toRagDto(NationalNormEntity entity);
+    NationalNormArticleDTO toArticleDto(ArticleEntity entity);
     NationalNormEntity toEntity(LegalBaseDTO dto);
     List<LegalBaseDTO> toDtoList(List<NationalNormEntity> entities);
+    List<LegalBaseRagDTO> toRagDtoList(List<NationalNormEntity> entities);
     List<NationalNormEntity> toEntityList(List<LegalBaseDTO> dtos); // New method to map list of DTOs to list of Entities
     List<NationalNormEntity> toEntityFomrGovDto(List<DatosGovCoNormDTO> dtos); // New method to map list of DTOs to list of Entities
 

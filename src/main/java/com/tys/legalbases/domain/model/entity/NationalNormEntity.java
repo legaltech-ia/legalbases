@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = AppConstants.TABLE_NATIONAL_NORMS)
@@ -32,4 +32,7 @@ public class NationalNormEntity {
 
     @Column(name = AppConstants.COLUMN_SOURCE_URL, nullable = false, columnDefinition = AppConstants.TEXT_COLUMN_DEFINITION)
     private String sourceUrl;
+
+    @OneToMany(mappedBy = "nationalNorm", fetch = FetchType.LAZY)
+    private List<ArticleEntity> articles;
 }
