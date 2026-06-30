@@ -85,4 +85,11 @@ public class LegalBaseService {
         entity.setSourceUrl(urlName);
         this.nationalNormRepository.save(entity);
     }
+
+    public List<LegalBaseDTO> findAll() {
+        return  nationalNormRepository.findAll()
+                .stream()
+                .map(nationalNormMapper::toDto)
+                .toList();
+    }
 }

@@ -4,6 +4,7 @@ public class AppConstants {
 
     // Controller related constants
     public static final String API_NATIONAL_NORMS_BASE_PATH = "/api/national-norms";
+    public static final String API_NATIONAL_NORMS_BY_CRITERIA = "/find-by-criteria";
     public static final String API_NATIONAL_NORMS_INGEST_PATH = "/ingest";
     public static final String API_NATIONAL_NORMS_SYNC_PATH = "/sync"; // Updated constant
     public static final String CROSS_ORIGIN_ALLOWED_ORIGINS = "*";
