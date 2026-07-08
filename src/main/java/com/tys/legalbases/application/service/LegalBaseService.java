@@ -2,6 +2,7 @@ package com.tys.legalbases.application.service;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
 import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
+import com.tys.legalbases.application.dtos.LegalBaseSaveDto;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.mappers.NationalNormMapper;
@@ -75,15 +76,35 @@ public class LegalBaseService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<LegalBaseDTO> findLegalBaseById(Long id) {
-        return nationalNormRepository.findById(id)
-                .map(nationalNormMapper::toDto);
+    public Optional<LegalBaseRagDTO> findLegalBaseById(Long id) {
+        return nationalNormRepository.findByIdWithArticles(id)
+                .map(nationalNormMapper::toRagDto);
     }
 
     public void save(LegalBaseDTO data, MultipartFile file) {
         var urlName = s3Service.uploadFile(file, Strings.EMPTY);
         var entity  = nationalNormMapper.toEntity(data);
         entity.setSourceUrl(urlName);
+        this.nationalNormRepository.save(entity);
+    }
+
+    public void save(LegalBaseSaveDto data, MultipartFile file) {
+        if (nationalNormRepository.findByTitle(data.title()).isPresent()) {
+            log.warn("National norm already exists, skipping save: {}", data.title());
+            return;
+        }
+        var entity = nationalNormMapper.toEntity(data);
+        if (file != null && !file.isEmpty()) {
+            var urlName = s3Service.uploadFile(file, Strings.EMPTY);
+            entity.setSourceUrl(urlName);
+        }
+        if (data.articles() != null && !data.articles().isEmpty()) {
+            var articles = data.articles().stream()
+                    .map(nationalNormMapper::toArticleEntity)
+                    .peek(article -> article.setNationalNorm(entity))
+                    .toList();
+            entity.setArticles(articles);
+        }
         this.nationalNormRepository.save(entity);
     }
 

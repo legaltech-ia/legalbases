@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,4 +23,7 @@ public interface NationalNormRepository
 
     @Query("SELECT DISTINCT n FROM NationalNormEntity n LEFT JOIN FETCH n.articles")
     List<NationalNormEntity> findAllWithArticles();
+
+    @Query("SELECT DISTINCT n FROM NationalNormEntity n LEFT JOIN FETCH n.articles WHERE n.id = :id")
+    Optional<NationalNormEntity> findByIdWithArticles(@Param("id") Long id);
 }

@@ -2,6 +2,7 @@ package com.tys.legalbases.application.mappers;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
 import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
+import com.tys.legalbases.application.dtos.LegalBaseSaveDto;
 import com.tys.legalbases.application.dtos.NationalNormArticleDTO;
 import com.tys.legalbases.domain.model.entity.ArticleEntity;
 import com.tys.legalbases.domain.model.entity.NationalNormEntity;
@@ -21,6 +22,10 @@ public interface NationalNormMapper {
     LegalBaseRagDTO toRagDto(NationalNormEntity entity);
     NationalNormArticleDTO toArticleDto(ArticleEntity entity);
     NationalNormEntity toEntity(LegalBaseDTO dto);
+    @Mapping(target = "articles", ignore = true)
+    NationalNormEntity toEntity(LegalBaseSaveDto dto);
+    @Mapping(target = "nationalNorm", ignore = true)
+    ArticleEntity toArticleEntity(NationalNormArticleDTO dto);
     List<LegalBaseDTO> toDtoList(List<NationalNormEntity> entities);
     List<LegalBaseRagDTO> toRagDtoList(List<NationalNormEntity> entities);
     List<NationalNormEntity> toEntityList(List<LegalBaseDTO> dtos); // New method to map list of DTOs to list of Entities

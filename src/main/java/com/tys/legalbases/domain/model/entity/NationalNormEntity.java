@@ -33,6 +33,6 @@ public class NationalNormEntity {
     @Column(name = AppConstants.COLUMN_SOURCE_URL, nullable = false, columnDefinition = AppConstants.TEXT_COLUMN_DEFINITION)
     private String sourceUrl;
 
-    @OneToMany(mappedBy = "nationalNorm", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "nationalNorm", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ArticleEntity> articles;
 }

@@ -2,6 +2,7 @@ package com.tys.legalbases.infrastructure.controller;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
 import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
+import com.tys.legalbases.application.dtos.LegalBaseSaveDto;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.service.LegalBaseService;
@@ -51,15 +52,15 @@ public class LegalBaseController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<LegalBaseDTO> getLegalBaseById(@PathVariable Long id) {
-        Optional<LegalBaseDTO> legalBase = LegalBaseservice.findLegalBaseById(id);
+    public ResponseEntity<LegalBaseRagDTO> getLegalBaseById(@PathVariable Long id) {
+        Optional<LegalBaseRagDTO> legalBase = LegalBaseservice.findLegalBaseById(id);
         return legalBase.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping(value = "/save", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Void> analize(
-            @RequestPart("data") LegalBaseDTO data,
+    public ResponseEntity<Void> save(
+            @RequestPart("data") LegalBaseSaveDto data,
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
         this.LegalBaseservice.save(data, file);
