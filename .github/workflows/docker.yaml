@@ -1,0 +1,35 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: "arn:aws:iam::042775548986:role/github-terraform-actions-role"
+          aws-region: "us-east-2"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/legaltech/legalbases:latest
