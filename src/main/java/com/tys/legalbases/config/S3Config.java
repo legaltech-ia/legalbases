@@ -26,7 +26,6 @@ public class S3Config {
 
     @Bean
     public S3Client s3Client() {
-        // Creamos las credenciales estáticas basadas en lo que pusiste en el application file
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
 
         return S3Client.builder()

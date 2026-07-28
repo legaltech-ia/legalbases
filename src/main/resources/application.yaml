@@ -1,5 +1,5 @@
 server:
-  port: ${LEGALBASES_SERVER_PORT} # Assuming a different port to avoid conflict with legalCase (8081)
+  port: ${LEGALBASES_SERVER_PORT}
 spring:
   cloud:
     compatibility-verifier:
@@ -19,20 +19,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: legal_bases
-external:
-  api:
-    datosgovco:
-      host: ${LEGALBASES_EXTERNAL_API_DATOSGOVCO_HOST}
-      endpoint: ${LEGALBASES_EXTERNAL_API_DATOSGOVCO_ENDPOINT}
-
 aws:
   accessKey: ${LEGALBASES_AWS_ACCESSKEY}
   secretKey: ${LEGALBASES_AWS_SECRETKEY}
   s3:
     region: us-east-1
     bucketname: normatives
-
-
-logging:
-  level:
-    com.tys.legalbases.infrastructure.external.DatosGovCoFeignClient: DEBUG

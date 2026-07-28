@@ -1,6 +1,7 @@
 package com.tys.legalbases.application.dtos;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record LegalBaseDTO(
     Long id,
@@ -8,5 +9,15 @@ public record LegalBaseDTO(
     String description,
     String type,
     LocalDateTime publishedAt,
-    String sourceUrl
+    String sourceUrl,
+    List<NationalNormArticleDTO> articles,
+    String tipo,
+    String numero,
+    Integer anio,
+    String sector,
+    String subtipo,
+    String vigencia,
+    String entidad,
+    String materia,
+    String articulos
 ) {}

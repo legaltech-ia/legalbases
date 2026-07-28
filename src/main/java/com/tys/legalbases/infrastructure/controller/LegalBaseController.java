@@ -1,8 +1,6 @@
 package com.tys.legalbases.infrastructure.controller;
 
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
-import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
-import com.tys.legalbases.application.dtos.LegalBaseSaveDto;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.service.LegalBaseService;
@@ -13,9 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.URISyntaxException;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping(AppConstants.API_NATIONAL_NORMS_BASE_PATH)
@@ -23,17 +19,17 @@ import java.util.Optional;
 @CrossOrigin(origins = AppConstants.CROSS_ORIGIN_ALLOWED_ORIGINS, allowedHeaders = AppConstants.CROSS_ORIGIN_ALLOWED_HEADERS)
 public class LegalBaseController {
 
-    private final LegalBaseService LegalBaseservice;
+    private final LegalBaseService legalBaseService;
 
     @GetMapping(AppConstants.API_NATIONAL_NORMS_BY_CRITERIA)
     public ResponseEntity<PagedResponseDTO<LegalBaseDTO>> getAllLegalBases(
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "publishedAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir
     ) {
-        PagedResponseDTO<LegalBaseDTO> result = LegalBaseservice.findAllLegalBases(
+        return ResponseEntity.ok(legalBaseService.findAllLegalBases(
                 LegalBaseSearchCriteria.builder()
                         .search(search)
                         .page(page)
@@ -41,40 +37,38 @@ public class LegalBaseController {
                         .sortBy(sortBy)
                         .sortDir(sortDir)
                         .build()
-        );
-        return ResponseEntity.ok(result);
-    }
-
-    @PostMapping(AppConstants.API_NATIONAL_NORMS_SYNC_PATH)
-    public ResponseEntity<Void> syncLegalBases() throws URISyntaxException {
-        LegalBaseservice.syncLegalBasesFromExternalSource();
-        return ResponseEntity.ok().build();
+        ));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<LegalBaseRagDTO> getLegalBaseById(@PathVariable Long id) {
-        Optional<LegalBaseRagDTO> legalBase = LegalBaseservice.findLegalBaseById(id);
-        return legalBase.map(ResponseEntity::ok)
+    public ResponseEntity<LegalBaseDTO> getLegalBaseById(@PathVariable Long id) {
+        return legalBaseService.findLegalBaseById(id)
+                .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping(value = "/save", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Void> save(
-            @RequestPart("data") LegalBaseSaveDto data,
+            @RequestPart("data") LegalBaseDTO data,
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        this.LegalBaseservice.save(data, file);
+        legalBaseService.save(data, file);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping(AppConstants.API_NATIONAL_NORMS_INGEST_PATH)
+    public ResponseEntity<Void> ingest(@RequestBody LegalBaseDTO data) {
+        legalBaseService.ingestFromDto(data);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping
     public ResponseEntity<List<LegalBaseDTO>> getAllLegalBases() {
-        List<LegalBaseDTO> legalBases = LegalBaseservice.findAll();
-        return ResponseEntity.ok(legalBases);
+        return ResponseEntity.ok(legalBaseService.findAll());
     }
 
     @GetMapping(AppConstants.API_NATIONAL_NORMS_RAG_PATH)
-    public ResponseEntity<List<LegalBaseRagDTO>> getAllLegalBasesForRag() {
-        return ResponseEntity.ok(LegalBaseservice.findAllForRag());
+    public ResponseEntity<List<LegalBaseDTO>> getAllLegalBasesForRag() {
+        return ResponseEntity.ok(legalBaseService.findAllForRag());
     }
 }

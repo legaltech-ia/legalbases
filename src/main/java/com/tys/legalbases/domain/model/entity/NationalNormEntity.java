@@ -35,4 +35,31 @@ public class NationalNormEntity {
 
     @OneToMany(mappedBy = "nationalNorm", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ArticleEntity> articles;
+
+    @Column(name = "tipo", length = 100)
+    private String tipo;
+
+    @Column(name = "numero", length = 100)
+    private String numero;
+
+    @Column(name = "anio")
+    private Integer anio;
+
+    @Column(name = "sector", length = 100)
+    private String sector;
+
+    @Column(name = "subtipo", length = 100)
+    private String subtipo;
+
+    @Column(name = "vigencia", length = 50)
+    private String vigencia;
+
+    @Column(name = "entidad", length = 200)
+    private String entidad;
+
+    @Column(name = "materia", columnDefinition = "TEXT")
+    private String materia;
+
+    @Column(name = "articulos", length = 50)
+    private String articulos;
 }
