@@ -14,7 +14,6 @@ public class AppConstants {
     // Entity related constants (table and column names, lengths, etc.)
     public static final String TABLE_NATIONAL_NORMS = "national_norms";
     public static final String TABLE_ARTICLES = "articles";
-    public static final String COLUMN_ID = "id";
     public static final String COLUMN_NORM_ID = "norm_id";
     public static final String COLUMN_ARTICLE_NUMBER = "article_number";
     public static final String COLUMN_ARTICLE_SUFFIX = "article_suffix";

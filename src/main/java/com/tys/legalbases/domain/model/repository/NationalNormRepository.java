@@ -1,7 +1,6 @@
 package com.tys.legalbases.domain.model.repository;
 
 import com.tys.legalbases.domain.model.entity.NationalNormEntity;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,9 +16,6 @@ public interface NationalNormRepository
                 JpaSpecificationExecutor<NationalNormEntity> {
 
     Optional<NationalNormEntity> findByTitle(String title);
-
-    @EntityGraph(attributePaths = "articles")
-    List<NationalNormEntity> findAllBy();
 
     @Query("SELECT DISTINCT n FROM NationalNormEntity n LEFT JOIN FETCH n.articles")
     List<NationalNormEntity> findAllWithArticles();

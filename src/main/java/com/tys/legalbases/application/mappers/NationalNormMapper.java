@@ -9,14 +9,11 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
-import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface NationalNormMapper {
-
-    NationalNormMapper INSTANCE = Mappers.getMapper(NationalNormMapper.class);
 
     @Named("toDto")
     @Mapping(target = "articles", ignore = true)
