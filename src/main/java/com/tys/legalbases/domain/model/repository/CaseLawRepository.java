@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CaseLawRepository extends JpaRepository<CaseLawEntity, Long> {
@@ -25,7 +26,7 @@ public interface CaseLawRepository extends JpaRepository<CaseLawEntity, Long> {
     List<CaseLawEntity> findByDateBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     @Query("SELECT j FROM CaseLawEntity j WHERE j.filingNumber = :filingNumber")
-    CaseLawEntity findByFilingNumber(@Param("filingNumber") String filingNumber);
+    Optional<CaseLawEntity> findByFilingNumber(@Param("filingNumber") String filingNumber);
 
     @Query("SELECT j FROM CaseLawEntity j WHERE LOWER(j.mainTopic) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(j.summary) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(j.fullText) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<CaseLawEntity> fullTextSearch(@Param("query") String query);

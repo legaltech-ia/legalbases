@@ -2,6 +2,7 @@ package com.tys.legalbases.application.service;
 
 import com.tys.legalbases.application.dtos.CaseLawDTO;
 import com.tys.legalbases.application.mappers.CaseLawMapper;
+import com.tys.legalbases.domain.exception.ResourceNotFoundException;
 import com.tys.legalbases.domain.model.entity.CaseLawEntity;
 import com.tys.legalbases.domain.model.entity.PrecedentRelation;
 import com.tys.legalbases.domain.model.repository.CaseLawRepository;
@@ -35,7 +36,7 @@ public class CaseLawService {
 
     @Transactional(readOnly = true)
     public Optional<CaseLawDTO> findByFilingNumber(String filingNumber) {
-        return Optional.ofNullable(caseLawRepository.findByFilingNumber(filingNumber))
+        return caseLawRepository.findByFilingNumber(filingNumber)
                 .map(caseLawMapper::toDto);
     }
 
@@ -64,6 +65,7 @@ public class CaseLawService {
         return caseLawMapper.toDtoList(caseLawRepository.fullTextSearch(query));
     }
 
+    @Transactional
     public CaseLawDTO save(CaseLawDTO dto) {
         var entity = caseLawMapper.toEntity(dto);
         var saved = caseLawRepository.save(entity);
@@ -71,17 +73,19 @@ public class CaseLawService {
         return caseLawMapper.toDto(saved);
     }
 
+    @Transactional
     public void saveAll(List<CaseLawDTO> dtos) {
         var entities = caseLawMapper.toEntityList(dtos);
         caseLawRepository.saveAll(entities);
         log.debug("Batch saved {} case law records", dtos.size());
     }
 
+    @Transactional
     public void addPrecedentRelation(Long sourceId, Long targetId, String relationType, String context) {
         var source = caseLawRepository.findById(sourceId)
-                .orElseThrow(() -> new IllegalArgumentException("Source case law not found: " + sourceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Source case law not found: " + sourceId));
         var target = caseLawRepository.findById(targetId)
-                .orElseThrow(() -> new IllegalArgumentException("Target case law not found: " + targetId));
+                .orElseThrow(() -> new ResourceNotFoundException("Target case law not found: " + targetId));
 
         var relation = PrecedentRelation.builder()
                 .sourceCaseLaw(source)
@@ -95,6 +99,7 @@ public class CaseLawService {
         log.debug("Added precedent relation: {} -> {} ({})", source.getFilingNumber(), target.getFilingNumber(), relationType);
     }
 
+    @Transactional
     public void deleteById(Long id) {
         caseLawRepository.deleteById(id);
         log.debug("Deleted case law: {}", id);
