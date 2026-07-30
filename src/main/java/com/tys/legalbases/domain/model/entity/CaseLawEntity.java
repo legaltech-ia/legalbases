@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -54,9 +56,11 @@ public class CaseLawEntity {
     @Column(name = "url_fuente")
     private String sourceUrl;
 
+    @CreationTimestamp
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "sourceCaseLaw", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -66,15 +70,4 @@ public class CaseLawEntity {
     @OneToMany(mappedBy = "targetCaseLaw", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PrecedentRelation> incomingPrecedents = new ArrayList<>();
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

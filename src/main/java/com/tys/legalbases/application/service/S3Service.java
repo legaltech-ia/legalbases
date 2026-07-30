@@ -1,5 +1,6 @@
 package com.tys.legalbases.application.service;
 
+import com.tys.legalbases.domain.exception.FileStorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,9 +38,9 @@ public class S3Service {
                     RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
             return uniqueFileName;
         } catch (IOException e) {
-            throw new RuntimeException("Error reading the bytes of the uploaded file", e);
+            throw new FileStorageException("Error reading the bytes of the uploaded file", e);
         } catch (S3Exception e) {
-            throw new RuntimeException("Critical communication error with AWS S3: " + e.awsErrorDetails().errorMessage(), e);
+            throw new FileStorageException("Critical communication error with AWS S3: " + e.awsErrorDetails().errorMessage(), e);
         }
     }
 

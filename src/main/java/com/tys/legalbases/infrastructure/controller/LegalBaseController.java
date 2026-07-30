@@ -18,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping(AppConstants.API_NATIONAL_NORMS_BASE_PATH)
 @RequiredArgsConstructor
-@CrossOrigin(origins = AppConstants.CROSS_ORIGIN_ALLOWED_ORIGINS, allowedHeaders = AppConstants.CROSS_ORIGIN_ALLOWED_HEADERS)
 public class LegalBaseController {
 
     private final LegalBaseService legalBaseService;

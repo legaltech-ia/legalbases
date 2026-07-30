@@ -1,6 +1,5 @@
 package com.tys.legalbases.application.service;
 
-import com.tys.legalbases.application.mappers.CaseLawMapper;
 import com.tys.legalbases.domain.exception.ResourceNotFoundException;
 import com.tys.legalbases.domain.model.entity.CaseLawEntity;
 import com.tys.legalbases.domain.model.repository.CaseLawRepository;
@@ -20,29 +19,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class CaseLawServiceTest {
+class PrecedentRelationServiceTest {
 
     @Mock
     private CaseLawRepository caseLawRepository;
 
-    @Mock
-    private CaseLawMapper caseLawMapper;
-
     @InjectMocks
-    private CaseLawService caseLawService;
-
-    @Test
-    void findByFilingNumberReturnsEmptyWhenRepositoryFindsNothing() {
-        when(caseLawRepository.findByFilingNumber("T-000/00")).thenReturn(Optional.empty());
-
-        assertThat(caseLawService.findByFilingNumber("T-000/00")).isEmpty();
-    }
+    private PrecedentRelationService precedentRelationService;
 
     @Test
     void addPrecedentRelationThrowsResourceNotFoundWhenSourceMissing() {
         when(caseLawRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> caseLawService.addPrecedentRelation(1L, 2L, "REITERA", "context"))
+        assertThatThrownBy(() -> precedentRelationService.addPrecedentRelation(1L, 2L, "REITERA", "context"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Source case law not found: 1");
         verify(caseLawRepository, never()).save(org.mockito.ArgumentMatchers.any());
@@ -56,7 +45,7 @@ class CaseLawServiceTest {
         when(caseLawRepository.findById(2L)).thenReturn(Optional.of(target));
         when(caseLawRepository.save(source)).thenReturn(source);
 
-        caseLawService.addPrecedentRelation(1L, 2L, "REITERA", "shared ratio decidendi");
+        precedentRelationService.addPrecedentRelation(1L, 2L, "REITERA", "shared ratio decidendi");
 
         var captor = ArgumentCaptor.forClass(CaseLawEntity.class);
         verify(caseLawRepository).save(captor.capture());
