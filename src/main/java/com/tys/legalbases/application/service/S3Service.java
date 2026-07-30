@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -23,28 +24,30 @@ public class S3Service {
     }
 
     public String uploadFile(MultipartFile file, String folderPrefix) {
+        String uniqueFileName = uniqueKey(file, folderPrefix);
 
-        String originalFilename = file.getOriginalFilename();
-        String fileExtension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
-        String uniqueFileName = folderPrefix + "/" + UUID.randomUUID().toString() + fileExtension;
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(uniqueFileName)
+                .contentType(file.getContentType())
+                .build();
 
         try {
-
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(uniqueFileName)
-                    .contentType(file.getContentType())
-                    .build();
-
             s3Client.putObject(putObjectRequest,
                     RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-
             return uniqueFileName;
-
         } catch (IOException e) {
             throw new RuntimeException("Error reading the bytes of the uploaded file", e);
         } catch (S3Exception e) {
             throw new RuntimeException("Critical communication error with AWS S3: " + e.awsErrorDetails().errorMessage(), e);
         }
+    }
+
+    private static String uniqueKey(MultipartFile file, String folderPrefix) {
+        String extension = Optional.ofNullable(file.getOriginalFilename())
+                .filter(name -> name.lastIndexOf('.') >= 0)
+                .map(name -> name.substring(name.lastIndexOf('.')))
+                .orElse("");
+        return folderPrefix + "/" + UUID.randomUUID() + extension;
     }
 }

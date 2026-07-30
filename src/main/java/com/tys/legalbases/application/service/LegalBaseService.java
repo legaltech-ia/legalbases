@@ -1,5 +1,6 @@
 package com.tys.legalbases.application.service;
 
+import com.tys.legalbases.application.dtos.IngestResult;
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -60,24 +62,12 @@ public class LegalBaseService {
                 .map(nationalNormMapper::toDetailDto);
     }
 
-    public void save(LegalBaseDTO data, MultipartFile file) {
-        if (nationalNormRepository.findByTitle(data.title()).isPresent()) {
-            log.warn("National norm already exists, skipping save: {}", data.title());
-            return;
-        }
-        var entity = nationalNormMapper.toEntity(data);
-        if (file != null && !file.isEmpty()) {
-            var urlName = s3Service.uploadFile(file, Strings.EMPTY);
-            entity.setSourceUrl(urlName);
-        }
-        if (data.articles() != null && !data.articles().isEmpty()) {
-            var articles = data.articles().stream()
-                    .map(nationalNormMapper::toArticleEntity)
-                    .peek(article -> article.setNationalNorm(entity))
-                    .toList();
-            entity.setArticles(articles);
-        }
-        this.nationalNormRepository.save(entity);
+    public IngestResult save(LegalBaseDTO data, MultipartFile file) {
+        // Upload only after the duplicate check inside ingest, via the enrich callback.
+        return ingest(data, entity -> Optional.ofNullable(file)
+                .filter(f -> !f.isEmpty())
+                .map(f -> s3Service.uploadFile(f, Strings.EMPTY))
+                .ifPresent(entity::setSourceUrl));
     }
 
     public List<LegalBaseDTO> findAll() {
@@ -92,20 +82,38 @@ public class LegalBaseService {
         return nationalNormMapper.toDetailDtoList(nationalNormRepository.findAllWithArticles());
     }
 
-    public void ingestFromDto(LegalBaseDTO data) {
-        if (nationalNormRepository.findByTitle(data.title()).isPresent()) {
-            log.debug("National norm already exists, skipping: {}", data.title());
-            return;
+    public IngestResult ingestFromDto(LegalBaseDTO data) {
+        return ingest(data, entity -> { });
+    }
+
+    private IngestResult ingest(LegalBaseDTO data, Consumer<NationalNormEntity> enrich) {
+        if (alreadyExists(data.title())) {
+            log.warn("National norm already exists, skipping: {}", data.title());
+            return IngestResult.alreadyExists();
         }
-        var entity = nationalNormMapper.toEntity(data);
-        if (data.articles() != null && !data.articles().isEmpty()) {
-            var articles = data.articles().stream()
-                    .map(nationalNormMapper::toArticleEntity)
-                    .peek(article -> article.setNationalNorm(entity))
-                    .toList();
-            entity.setArticles(articles);
-        }
-        this.nationalNormRepository.save(entity);
+        var entity = buildEntity(data);
+        enrich.accept(entity);
+        nationalNormRepository.save(entity);
         log.debug("Ingested national norm: {}", data.title());
+        return IngestResult.created();
+    }
+
+    private boolean alreadyExists(String title) {
+        return nationalNormRepository.findByTitle(title).isPresent();
+    }
+
+    private NationalNormEntity buildEntity(LegalBaseDTO data) {
+        var entity = nationalNormMapper.toEntity(data);
+        Optional.ofNullable(data.articles())
+                .filter(articles -> !articles.isEmpty())
+                .map(articles -> articles.stream()
+                        .map(dto -> {
+                            var article = nationalNormMapper.toArticleEntity(dto);
+                            article.setNationalNorm(entity);
+                            return article;
+                        })
+                        .toList())
+                .ifPresent(entity::setArticles);
+        return entity;
     }
 }

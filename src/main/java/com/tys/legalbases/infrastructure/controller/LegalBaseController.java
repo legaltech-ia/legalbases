@@ -1,11 +1,13 @@
 package com.tys.legalbases.infrastructure.controller;
 
+import com.tys.legalbases.application.dtos.IngestResult;
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.service.LegalBaseService;
 import com.tys.legalbases.util.AppConstants;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,18 +50,24 @@ public class LegalBaseController {
     }
 
     @PostMapping(value = "/save", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Void> save(
+    public ResponseEntity<IngestResult> save(
             @RequestPart("data") LegalBaseDTO data,
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        legalBaseService.save(data, file);
-        return ResponseEntity.ok().build();
+        return toResponse(legalBaseService.save(data, file));
     }
 
     @PostMapping(AppConstants.API_NATIONAL_NORMS_INGEST_PATH)
-    public ResponseEntity<Void> ingest(@RequestBody LegalBaseDTO data) {
-        legalBaseService.ingestFromDto(data);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<IngestResult> ingest(@RequestBody LegalBaseDTO data) {
+        return toResponse(legalBaseService.ingestFromDto(data));
+    }
+
+    // ALREADY_EXISTS stays 2xx (200): push callers treat non-2xx as failure and the operation is idempotent.
+    private static ResponseEntity<IngestResult> toResponse(IngestResult result) {
+        return switch (result.outcome()) {
+            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(result);
+            case ALREADY_EXISTS -> ResponseEntity.ok(result);
+        };
     }
 
     @GetMapping
