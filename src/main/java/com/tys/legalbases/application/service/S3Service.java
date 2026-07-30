@@ -42,9 +42,9 @@ public class S3Service {
             return uniqueFileName;
 
         } catch (IOException e) {
-            throw new RuntimeException("Error al leer los bytes del archivo enviado", e);
+            throw new RuntimeException("Error reading the bytes of the uploaded file", e);
         } catch (S3Exception e) {
-            throw new RuntimeException("Error de comunicación crítica con AWS S3: " + e.awsErrorDetails().errorMessage(), e);
+            throw new RuntimeException("Critical communication error with AWS S3: " + e.awsErrorDetails().errorMessage(), e);
         }
     }
 }
