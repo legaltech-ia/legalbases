@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.List;
 public class LegalBaseController {
 
     private final LegalBaseService legalBaseService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping(AppConstants.API_NATIONAL_NORMS_BY_CRITERIA)
     public ResponseEntity<PagedResponseDTO<LegalBaseDTO>> getAllLegalBases(
@@ -48,12 +51,19 @@ public class LegalBaseController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /**
+     * 'data' llega como String y no como DTO tipado a proposito: el encoder
+     * multipart de Feign (SpringFormEncoder) solo transporta MultipartFile y
+     * campos simples, asi que una parte POJO nunca se envia y el binding falla
+     * con "Required part 'data' is not present" (medido el 17 ago 2026). Con un
+     * String si viaja, y el BFF puede dejar de usar WebClient para esta llamada.
+     */
     @PostMapping(value = "/save", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<IngestResult> save(
-            @RequestPart("data") LegalBaseDTO data,
+            @RequestPart("data") String data,
             @RequestPart(value = "file", required = false) MultipartFile file
-    ) {
-        return toResponse(legalBaseService.save(data, file));
+    ) throws JsonProcessingException {
+        return toResponse(legalBaseService.save(objectMapper.readValue(data, LegalBaseDTO.class), file));
     }
 
     @PostMapping(AppConstants.API_NATIONAL_NORMS_INGEST_PATH)
