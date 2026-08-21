@@ -23,6 +23,8 @@ public interface CaseLawMapper {
     @Mapping(target = "incomingPrecedents", ignore = true)
     CaseLawEntity toEntity(CaseLawDTO dto);
 
+    @Mapping(target = "sourceCaseLawId", source = "sourceCaseLaw.id")
+    @Mapping(target = "targetCaseLawId", source = "targetCaseLaw.id")
     @Mapping(target = "sourceFilingNumber", source = "sourceCaseLaw.filingNumber")
     @Mapping(target = "sourceCourt", source = "sourceCaseLaw.court")
     PrecedentDTO toPrecedentDto(PrecedentRelation relation);
