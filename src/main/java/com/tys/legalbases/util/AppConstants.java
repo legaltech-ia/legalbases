@@ -8,6 +8,7 @@ public class AppConstants {
     public static final String API_NATIONAL_NORMS_INGEST_PATH = "/ingest";
     public static final String API_NATIONAL_NORMS_RAG_PATH = "/rag";
     public static final String API_CASE_LAW_BASE_PATH = "/api/case-law";
+    public static final String API_LEGAL_GRAPH_BASE_PATH = "/api/legal-graph";
     public static final String CROSS_ORIGIN_ALLOWED_ORIGINS = "*";
     public static final String CROSS_ORIGIN_ALLOWED_HEADERS = "*";
 
