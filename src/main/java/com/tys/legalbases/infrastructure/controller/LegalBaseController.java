@@ -74,7 +74,7 @@ public class LegalBaseController {
     // ALREADY_EXISTS stays 2xx (200): push callers treat non-2xx as failure and the operation is idempotent.
     private static ResponseEntity<IngestResult> toResponse(IngestResult result) {
         return switch (result.outcome()) {
-            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(result);
+            case CREATED, ARTICLES_ADDED -> ResponseEntity.status(HttpStatus.CREATED).body(result);
             case ALREADY_EXISTS -> ResponseEntity.ok(result);
         };
     }

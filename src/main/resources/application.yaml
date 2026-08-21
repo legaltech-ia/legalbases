@@ -1,6 +1,14 @@
 server:
   port: ${LEGALBASES_SERVER_PORT}
 spring:
+  servlet:
+    multipart:
+      # Mismo tope en toda la cadena (BFF, legal, legalcase, legalbases y
+      # legaltech-tools). Sin declararlo rige el default de Spring —1 MB— y el
+      # servicio devuelve 413 a mitad de camino, con el resto de la cadena ya
+      # configurada para 50 MB: el error aparece lejos de donde esta la causa.
+      max-file-size: 50MB
+      max-request-size: 50MB
   cloud:
     compatibility-verifier:
       enabled: false

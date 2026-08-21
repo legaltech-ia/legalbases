@@ -5,6 +5,7 @@ import com.tys.legalbases.application.dtos.LegalBaseDTO;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.mappers.NationalNormMapper;
+import com.tys.legalbases.application.dtos.NationalNormArticleDTO;
 import com.tys.legalbases.domain.model.entity.NationalNormEntity;
 import com.tys.legalbases.domain.model.repository.NationalNormRepository;
 import com.tys.legalbases.domain.model.repository.NationalNormSpecification;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -87,9 +89,9 @@ public class LegalBaseService {
     }
 
     private IngestResult ingest(LegalBaseDTO data, Consumer<NationalNormEntity> enrich) {
-        if (alreadyExists(data.title())) {
-            log.warn("National norm already exists, skipping: {}", data.title());
-            return IngestResult.alreadyExists();
+        Optional<NationalNormEntity> existente = nationalNormRepository.findByTitle(data.title());
+        if (existente.isPresent()) {
+            return completarArticulado(existente.get(), data);
         }
         var entity = buildEntity(data);
         enrich.accept(entity);
@@ -98,8 +100,41 @@ public class LegalBaseService {
         return IngestResult.created();
     }
 
-    private boolean alreadyExists(String title) {
-        return nationalNormRepository.findByTitle(title).isPresent();
+    /**
+     * Una norma ya registrada solo se toca para ponerle el articulado que le
+     * falta. Nunca se reescribe la que ya lo tiene: el texto de una norma
+     * vigente no se pisa desde una ingesta.
+     */
+    private IngestResult completarArticulado(NationalNormEntity existente, LegalBaseDTO data) {
+        // La coleccion no se inicializa en la entidad: una norma cargada sin
+        // articulos la trae en null, y sumarle ahi mismo explotaria.
+        if (existente.getArticles() == null) {
+            existente.setArticles(new ArrayList<>());
+        }
+        boolean sinArticulado = existente.getArticles().isEmpty();
+        List<NationalNormArticleDTO> entrantes = Optional.ofNullable(data.articles()).orElseGet(List::of);
+
+        if (!sinArticulado || entrantes.isEmpty()) {
+            log.warn("National norm already exists, skipping: {} (articulado presente: {})",
+                    data.title(), !sinArticulado);
+            return IngestResult.alreadyExists();
+        }
+
+        // Se MUTA la coleccion que ya trae la entidad, no se reemplaza: sustituir
+        // el PersistentBag de Hibernate por una lista inmutable de toList() hace
+        // que el flush estalle con UnsupportedOperationException.
+        entrantes.stream()
+                .map(dto -> {
+                    var article = nationalNormMapper.toArticleEntity(dto);
+                    article.setNationalNorm(existente);
+                    return article;
+                })
+                .forEach(existente.getArticles()::add);
+        nationalNormRepository.save(existente);
+        log.info("Articulado añadido a norma ya registrada: {} ({} artículos). "
+                + "Ahora sí entra al vector store y el analizador puede citarla.",
+                data.title(), entrantes.size());
+        return IngestResult.articlesAdded();
     }
 
     private NationalNormEntity buildEntity(LegalBaseDTO data) {
