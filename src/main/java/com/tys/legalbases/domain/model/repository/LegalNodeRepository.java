@@ -15,6 +15,13 @@ public interface LegalNodeRepository extends JpaRepository<LegalNodeEntity, Long
     List<LegalNodeEntity> findByReferenceContainingIgnoreCase(String reference);
 
     /**
+     * The RAG-retrieved norm Document carries `national_norm_id`, never a
+     * reference string - this is the reliable join key for legal's vigencia
+     * check (see LegalGraphController#findByNationalNormId).
+     */
+    List<LegalNodeEntity> findByNationalNormId(Long nationalNormId);
+
+    /**
      * Transitive chain of effects reaching a node: which norms or rulings
      * derogate, modify or condition it, directly or through others. Walks
      * the graph backwards with a recursive CTE (max 5 levels).

@@ -33,6 +33,12 @@ public class LegalGraphController {
         return ResponseEntity.ok(graphService.searchNodes(reference));
     }
 
+    /** Consumed by legal's vigencia check on the RAG-retrieved norm Documents (only national_norm_id is reliably available there). */
+    @GetMapping("/nodes/by-national-norm/{nationalNormId}")
+    public ResponseEntity<List<NodeResponse>> findByNationalNormId(@PathVariable("nationalNormId") Long nationalNormId) {
+        return ResponseEntity.ok(graphService.findByNationalNormId(nationalNormId));
+    }
+
     @GetMapping("/nodes/{id}/enriched")
     public ResponseEntity<EnrichedNorm> enrichedNorm(@PathVariable("id") Long id) {
         return ResponseEntity.ok(graphService.enrichedNorm(id));

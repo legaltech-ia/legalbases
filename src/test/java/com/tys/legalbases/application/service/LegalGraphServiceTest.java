@@ -127,6 +127,20 @@ class LegalGraphServiceTest {
     }
 
     @Test
+    void findByNationalNormIdIsTheJoinKeyLegalUsesForItsVigenciaCheck() {
+        LegalNodeEntity n = node(2L, "Ley 1801 de 2016, art. 27", "derogado");
+        n.setNationalNormId(42L);
+        when(nodeRepository.findByNationalNormId(42L)).thenReturn(List.of(n));
+
+        var result = graphService.findByNationalNormId(42L);
+
+        assertThat(result).singleElement().satisfies(r -> {
+            assertThat(r.nationalNormId()).isEqualTo(42L);
+            assertThat(r.status()).isEqualTo("derogado");
+        });
+    }
+
+    @Test
     void enrichedNormAssemblesWhatAffectsAndWhatIsAffected() {
         LegalNodeEntity n = node(2L, "Ley 1801 de 2016, art. 27", "modificado");
         when(nodeRepository.findById(2L)).thenReturn(Optional.of(n));

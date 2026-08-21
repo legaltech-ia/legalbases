@@ -123,6 +123,13 @@ public class LegalGraphService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<NodeResponse> findByNationalNormId(Long nationalNormId) {
+        return nodeRepository.findByNationalNormId(nationalNormId).stream()
+                .map(LegalGraphService::toResponse)
+                .toList();
+    }
+
     private LegalNodeEntity findByReference(String reference) {
         if (reference == null || reference.isBlank()) {
             throw new IllegalArgumentException("Las referencias de origen y destino son obligatorias");
