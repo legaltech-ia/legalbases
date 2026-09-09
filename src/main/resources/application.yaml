@@ -1,6 +1,14 @@
 server:
-  port: ${LEGALBASES_SERVER_PORT} # Assuming a different port to avoid conflict with legalCase (8081)
+  port: ${LEGALBASES_SERVER_PORT}
 spring:
+  servlet:
+    multipart:
+      # Mismo tope en toda la cadena (BFF, legal, legalcase, legalbases y
+      # legaltech-tools). Sin declararlo rige el default de Spring —1 MB— y el
+      # servicio devuelve 413 a mitad de camino, con el resto de la cadena ya
+      # configurada para 50 MB: el error aparece lejos de donde esta la causa.
+      max-file-size: 50MB
+      max-request-size: 50MB
   cloud:
     compatibility-verifier:
       enabled: false
@@ -19,20 +27,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: legal_bases
-external:
-  api:
-    datosgovco:
-      host: ${LEGALBASES_EXTERNAL_API_DATOSGOVCO_HOST}
-      endpoint: ${LEGALBASES_EXTERNAL_API_DATOSGOVCO_ENDPOINT}
-
 aws:
   accessKey: ${LEGALBASES_AWS_ACCESSKEY}
   secretKey: ${LEGALBASES_AWS_SECRETKEY}
   s3:
     region: us-east-1
     bucketname: normatives
-
-
-logging:
-  level:
-    com.tys.legalbases.infrastructure.external.DatosGovCoFeignClient: DEBUG

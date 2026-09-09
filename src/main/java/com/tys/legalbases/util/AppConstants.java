@@ -6,15 +6,15 @@ public class AppConstants {
     public static final String API_NATIONAL_NORMS_BASE_PATH = "/api/national-norms";
     public static final String API_NATIONAL_NORMS_BY_CRITERIA = "/find-by-criteria";
     public static final String API_NATIONAL_NORMS_INGEST_PATH = "/ingest";
-    public static final String API_NATIONAL_NORMS_SYNC_PATH = "/sync"; // Updated constant
     public static final String API_NATIONAL_NORMS_RAG_PATH = "/rag";
+    public static final String API_CASE_LAW_BASE_PATH = "/api/case-law";
+    public static final String API_LEGAL_GRAPH_BASE_PATH = "/api/legal-graph";
     public static final String CROSS_ORIGIN_ALLOWED_ORIGINS = "*";
     public static final String CROSS_ORIGIN_ALLOWED_HEADERS = "*";
 
     // Entity related constants (table and column names, lengths, etc.)
     public static final String TABLE_NATIONAL_NORMS = "national_norms";
     public static final String TABLE_ARTICLES = "articles";
-    public static final String COLUMN_ID = "id";
     public static final String COLUMN_NORM_ID = "norm_id";
     public static final String COLUMN_ARTICLE_NUMBER = "article_number";
     public static final String COLUMN_ARTICLE_SUFFIX = "article_suffix";

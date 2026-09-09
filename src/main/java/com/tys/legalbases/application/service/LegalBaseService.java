@@ -1,16 +1,14 @@
 package com.tys.legalbases.application.service;
 
+import com.tys.legalbases.application.dtos.IngestResult;
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
-import com.tys.legalbases.application.dtos.LegalBaseRagDTO;
-import com.tys.legalbases.application.dtos.LegalBaseSaveDto;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.mappers.NationalNormMapper;
+import com.tys.legalbases.application.dtos.NationalNormArticleDTO;
 import com.tys.legalbases.domain.model.entity.NationalNormEntity;
 import com.tys.legalbases.domain.model.repository.NationalNormRepository;
 import com.tys.legalbases.domain.model.repository.NationalNormSpecification;
-import com.tys.legalbases.infrastructure.external.DatosGovCoFeignClient;
-import com.tys.legalbases.infrastructure.external.dtos.DatosGovCoNormDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
@@ -22,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +31,6 @@ import java.util.Optional;
 public class LegalBaseService {
 
     private final NationalNormRepository nationalNormRepository;
-    private final DatosGovCoFeignClient datosGovCoFeignClient;
     private final NationalNormMapper nationalNormMapper;
     private final S3Service s3Service;
 
@@ -59,64 +58,97 @@ public class LegalBaseService {
         );
     }
 
-    public void syncLegalBasesFromExternalSource() {
-        List<DatosGovCoNormDTO> externalNorms = datosGovCoFeignClient.getLegalBases();
-
-        externalNorms.forEach(register -> {
-            NationalNormEntity newEntity = nationalNormMapper.toEntity(nationalNormMapper.toDto(register));
-            Optional<NationalNormEntity> existingNorm = nationalNormRepository.findByTitle(newEntity.getTitle());
-
-            if (existingNorm.isEmpty()) {
-                nationalNormRepository.save(newEntity);
-                log.debug("Saved new national norm: {}", newEntity.getTitle());
-            } else {
-                log.debug("National norm already exists, skipping: {}", newEntity.getTitle());
-            }
-        });
-    }
-
     @Transactional(readOnly = true)
-    public Optional<LegalBaseRagDTO> findLegalBaseById(Long id) {
+    public Optional<LegalBaseDTO> findLegalBaseById(Long id) {
         return nationalNormRepository.findByIdWithArticles(id)
-                .map(nationalNormMapper::toRagDto);
+                .map(nationalNormMapper::toDetailDto);
     }
 
-    public void save(LegalBaseDTO data, MultipartFile file) {
-        var urlName = s3Service.uploadFile(file, Strings.EMPTY);
-        var entity  = nationalNormMapper.toEntity(data);
-        entity.setSourceUrl(urlName);
-        this.nationalNormRepository.save(entity);
-    }
-
-    public void save(LegalBaseSaveDto data, MultipartFile file) {
-        if (nationalNormRepository.findByTitle(data.title()).isPresent()) {
-            log.warn("National norm already exists, skipping save: {}", data.title());
-            return;
-        }
-        var entity = nationalNormMapper.toEntity(data);
-        if (file != null && !file.isEmpty()) {
-            var urlName = s3Service.uploadFile(file, Strings.EMPTY);
-            entity.setSourceUrl(urlName);
-        }
-        if (data.articles() != null && !data.articles().isEmpty()) {
-            var articles = data.articles().stream()
-                    .map(nationalNormMapper::toArticleEntity)
-                    .peek(article -> article.setNationalNorm(entity))
-                    .toList();
-            entity.setArticles(articles);
-        }
-        this.nationalNormRepository.save(entity);
+    public IngestResult save(LegalBaseDTO data, MultipartFile file) {
+        // Upload only after the duplicate check inside ingest, via the enrich callback.
+        return ingest(data, entity -> Optional.ofNullable(file)
+                .filter(f -> !f.isEmpty())
+                .map(f -> s3Service.uploadFile(f, Strings.EMPTY))
+                .ifPresent(entity::setSourceUrl));
     }
 
     public List<LegalBaseDTO> findAll() {
-        return  nationalNormRepository.findAll()
+        return nationalNormRepository.findAll()
                 .stream()
                 .map(nationalNormMapper::toDto)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<LegalBaseRagDTO> findAllForRag() {
-        return nationalNormMapper.toRagDtoList(nationalNormRepository.findAllWithArticles());
+    public List<LegalBaseDTO> findAllForRag() {
+        return nationalNormMapper.toDetailDtoList(nationalNormRepository.findAllWithArticles());
+    }
+
+    public IngestResult ingestFromDto(LegalBaseDTO data) {
+        return ingest(data, entity -> { });
+    }
+
+    private IngestResult ingest(LegalBaseDTO data, Consumer<NationalNormEntity> enrich) {
+        Optional<NationalNormEntity> existente = nationalNormRepository.findByTitle(data.title());
+        if (existente.isPresent()) {
+            return completarArticulado(existente.get(), data);
+        }
+        var entity = buildEntity(data);
+        enrich.accept(entity);
+        nationalNormRepository.save(entity);
+        log.debug("Ingested national norm: {}", data.title());
+        return IngestResult.created();
+    }
+
+    /**
+     * Una norma ya registrada solo se toca para ponerle el articulado que le
+     * falta. Nunca se reescribe la que ya lo tiene: el texto de una norma
+     * vigente no se pisa desde una ingesta.
+     */
+    private IngestResult completarArticulado(NationalNormEntity existente, LegalBaseDTO data) {
+        // La coleccion no se inicializa en la entidad: una norma cargada sin
+        // articulos la trae en null, y sumarle ahi mismo explotaria.
+        if (existente.getArticles() == null) {
+            existente.setArticles(new ArrayList<>());
+        }
+        boolean sinArticulado = existente.getArticles().isEmpty();
+        List<NationalNormArticleDTO> entrantes = Optional.ofNullable(data.articles()).orElseGet(List::of);
+
+        if (!sinArticulado || entrantes.isEmpty()) {
+            log.warn("National norm already exists, skipping: {} (articulado presente: {})",
+                    data.title(), !sinArticulado);
+            return IngestResult.alreadyExists();
+        }
+
+        // Se MUTA la coleccion que ya trae la entidad, no se reemplaza: sustituir
+        // el PersistentBag de Hibernate por una lista inmutable de toList() hace
+        // que el flush estalle con UnsupportedOperationException.
+        entrantes.stream()
+                .map(dto -> {
+                    var article = nationalNormMapper.toArticleEntity(dto);
+                    article.setNationalNorm(existente);
+                    return article;
+                })
+                .forEach(existente.getArticles()::add);
+        nationalNormRepository.save(existente);
+        log.info("Articulado añadido a norma ya registrada: {} ({} artículos). "
+                + "Ahora sí entra al vector store y el analizador puede citarla.",
+                data.title(), entrantes.size());
+        return IngestResult.articlesAdded();
+    }
+
+    private NationalNormEntity buildEntity(LegalBaseDTO data) {
+        var entity = nationalNormMapper.toEntity(data);
+        Optional.ofNullable(data.articles())
+                .filter(articles -> !articles.isEmpty())
+                .map(articles -> articles.stream()
+                        .map(dto -> {
+                            var article = nationalNormMapper.toArticleEntity(dto);
+                            article.setNationalNorm(entity);
+                            return article;
+                        })
+                        .toList())
+                .ifPresent(entity::setArticles);
+        return entity;
     }
 }
