@@ -2,6 +2,7 @@ package com.tys.legalbases.application.service;
 
 import com.tys.legalbases.application.dtos.IngestResult;
 import com.tys.legalbases.application.dtos.LegalBaseDTO;
+import com.tys.legalbases.domain.model.ArticleLabel;
 import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.mappers.NationalNormMapper;
@@ -21,8 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Objects;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.function.Consumer;
 
 @Service
@@ -123,7 +127,26 @@ public class LegalBaseService {
         // Se MUTA la coleccion que ya trae la entidad, no se reemplaza: sustituir
         // el PersistentBag de Hibernate por una lista inmutable de toList() hace
         // que el flush estalle con UnsupportedOperationException.
-        entrantes.stream()
+        // La guarda de arriba es por NORMA --"ya tiene articulado"-- y no por
+        // articulo, asi que un payload que trae el mismo articulo dos veces los
+        // insertaba los dos. Medido el 18 nov 2026: 50 de los 243 articulos de
+        // la Ley 1801 estaban duplicados byte a byte, y cada repetido se comia
+        // un hueco del topK del RAG, que recupera tres.
+        List<NationalNormArticleDTO> sinRepetidos = entrantes.stream()
+                .filter(dto -> Objects.nonNull(dto) && Objects.nonNull(dto.content()))
+                .collect(Collectors.toMap(
+                        LegalBaseService::designacionDe, dto -> dto, (primero, ignorado) -> primero,
+                        LinkedHashMap::new))
+                .values().stream()
+                .toList();
+
+        Optional.of(entrantes.size() - sinRepetidos.size())
+                .filter(repetidos -> repetidos > 0)
+                .ifPresent(repetidos -> log.warn(
+                        "Ingesta de '{}': {} articulo(s) repetidos en el payload, se guarda el primero de cada uno",
+                        data.title(), repetidos));
+
+        sinRepetidos.stream()
                 .map(dto -> {
                     var article = nationalNormMapper.toArticleEntity(dto);
                     article.setNationalNorm(existente);
@@ -133,8 +156,15 @@ public class LegalBaseService {
         nationalNormRepository.save(existente);
         log.info("Articulado añadido a norma ya registrada: {} ({} artículos). "
                 + "Ahora sí entra al vector store y el analizador puede citarla.",
-                data.title(), entrantes.size());
+                data.title(), sinRepetidos.size());
         return IngestResult.articlesAdded();
+    }
+
+    /** Dos articulos con la misma designacion son el mismo articulo. */
+    private static String designacionDe(NationalNormArticleDTO dto) {
+        return Optional.ofNullable(dto.articleLabel())
+                .filter(label -> !label.isBlank())
+                .orElseGet(() -> ArticleLabel.fromLegacy(dto.articleNumber(), dto.articleSuffix()));
     }
 
     private NationalNormEntity buildEntity(LegalBaseDTO data) {

@@ -127,4 +127,26 @@ class LegalBaseServiceIngestTest {
         assertThat(resultado.outcome()).isEqualTo(IngestResult.Outcome.CREATED);
         verify(nationalNormRepository).save(any());
     }
+
+    /**
+     * La guarda que ya habia es por NORMA --"ya tiene articulado"-- y no por
+     * articulo. Un payload con el mismo articulo repetido los insertaba todos:
+     * medido el 18 nov 2026, 50 de los 243 articulos de la Ley 1801 estaban
+     * duplicados byte a byte en la base. Cada repetido se come un hueco del
+     * topK del RAG, que recupera tres, asi que el modelo recibia el mismo
+     * articulo dos veces en vez de dos articulos distintos.
+     */
+    @Test
+    void unArticuloRepetidoEnElPayloadSeGuardaUnaSolaVez() {
+        var entidad = registradaSinArticulado();
+        when(nationalNormRepository.findByTitle(TITULO)).thenReturn(Optional.of(entidad));
+        when(nationalNormMapper.toArticleEntity(any())).thenAnswer(i -> new ArticleEntity());
+
+        legalBaseService.ingestFromDto(conArticulado(
+                articulo(27, "texto del 27"),
+                articulo(27, "texto del 27"),
+                articulo(77, "texto del 77")));
+
+        assertThat(entidad.getArticles()).hasSize(2);
+    }
 }
