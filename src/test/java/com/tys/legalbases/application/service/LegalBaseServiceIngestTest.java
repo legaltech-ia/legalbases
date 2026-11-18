@@ -48,7 +48,7 @@ class LegalBaseServiceIngestTest {
     @InjectMocks private LegalBaseService legalBaseService;
 
     private static NationalNormArticleDTO articulo(int numero, String contenido) {
-        return new NationalNormArticleDTO(null, numero, null, "Titulo " + numero, contenido, null);
+        return new NationalNormArticleDTO(null, String.valueOf(numero), numero, null, "Titulo " + numero, contenido, null);
     }
 
     private static LegalBaseDTO conArticulado(NationalNormArticleDTO... articulos) {

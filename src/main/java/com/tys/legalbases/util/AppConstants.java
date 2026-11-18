@@ -18,6 +18,8 @@ public class AppConstants {
     public static final String COLUMN_NORM_ID = "norm_id";
     public static final String COLUMN_ARTICLE_NUMBER = "article_number";
     public static final String COLUMN_ARTICLE_SUFFIX = "article_suffix";
+
+    public static final String COLUMN_ARTICLE_LABEL = "article_label";
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_CONTENT = "content";
     public static final String COLUMN_CREATED_AT = "created_at";
@@ -29,7 +31,10 @@ public class AppConstants {
     // Lengths
     public static final int TITLE_LENGTH = 255;
     public static final int TYPE_LENGTH = 50;
-    public static final int ARTICLE_SUFFIX_LENGTH = 10;
+    // 10 no alcanzaba: el sufijo de un 2.2.8.18.7.1 son 11 caracteres.
+    public static final int ARTICLE_SUFFIX_LENGTH = 60;
+
+    public static final int ARTICLE_LABEL_LENGTH = 60;
     public static final int ARTICLE_TITLE_LENGTH = 500;
 
     // Column Definitions
