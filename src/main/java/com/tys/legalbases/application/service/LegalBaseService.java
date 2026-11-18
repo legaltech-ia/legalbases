@@ -108,15 +108,9 @@ public class LegalBaseService {
     }
 
     /**
-     * Una norma ya registrada solo se toca para ponerle el articulado que le
-     * falta, articulo por articulo. Nunca se reescribe el que ya esta: el texto
-     * de una norma vigente no se pisa desde una ingesta.
-     *
-     * <p>La guarda era por NORMA --"ya tiene articulado"-- y eso hacia
-     * imposible completar un articulado parcial, que es justo el caso que
-     * importa: la Ley 1801 entro con 193 de sus 243 articulos y los 50 que
-     * faltaban --136 a 160 y 186 a 210, con las atribuciones de las autoridades
-     * de policia dentro-- no habia forma de meterlos sin tocar la base a mano.
+     * Completes a registered norm article by article; existing text is never rewritten.
+     * The guard used to be per NORM, which made a partial articulado impossible to
+     * finish — the Ley 1801 came in with 193 of its 243 articles.
      */
     private IngestResult completarArticulado(NationalNormEntity existente, LegalBaseDTO data) {
         // La coleccion no se inicializa en la entidad: una norma cargada sin
@@ -128,10 +122,7 @@ public class LegalBaseService {
                 .map(LegalBaseService::designacionDe)
                 .collect(Collectors.toSet());
 
-        // Dos pasadas de la misma regla: el payload no repite un articulo
-        // consigo mismo --50 de los 243 de la Ley 1801 entraron duplicados byte
-        // a byte, y cada repetido se come un hueco del topK del RAG, que
-        // recupera tres-- y tampoco repite uno que la norma ya tiene escrito.
+        // Same rule twice: the payload may not repeat an article, nor one already written.
         List<NationalNormArticleDTO> entrantes = Optional.ofNullable(data.articles()).orElseGet(List::of);
         List<NationalNormArticleDTO> nuevos = entrantes.stream()
                 .filter(dto -> Objects.nonNull(dto) && Objects.nonNull(dto.content()))
