@@ -7,6 +7,7 @@ import com.tys.legalbases.application.dtos.LegalBaseSearchCriteria;
 import com.tys.legalbases.application.dtos.PagedResponseDTO;
 import com.tys.legalbases.application.mappers.NationalNormMapper;
 import com.tys.legalbases.application.dtos.NationalNormArticleDTO;
+import com.tys.legalbases.domain.model.entity.ArticleEntity;
 import com.tys.legalbases.domain.model.entity.NationalNormEntity;
 import com.tys.legalbases.domain.model.repository.NationalNormRepository;
 import com.tys.legalbases.domain.model.repository.NationalNormSpecification;
@@ -23,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 import java.util.List;
 import java.util.Optional;
@@ -106,8 +109,14 @@ public class LegalBaseService {
 
     /**
      * Una norma ya registrada solo se toca para ponerle el articulado que le
-     * falta. Nunca se reescribe la que ya lo tiene: el texto de una norma
-     * vigente no se pisa desde una ingesta.
+     * falta, articulo por articulo. Nunca se reescribe el que ya esta: el texto
+     * de una norma vigente no se pisa desde una ingesta.
+     *
+     * <p>La guarda era por NORMA --"ya tiene articulado"-- y eso hacia
+     * imposible completar un articulado parcial, que es justo el caso que
+     * importa: la Ley 1801 entro con 193 de sus 243 articulos y los 50 que
+     * faltaban --136 a 160 y 186 a 210, con las atribuciones de las autoridades
+     * de policia dentro-- no habia forma de meterlos sin tocar la base a mano.
      */
     private IngestResult completarArticulado(NationalNormEntity existente, LegalBaseDTO data) {
         // La coleccion no se inicializa en la entidad: una norma cargada sin
@@ -115,38 +124,41 @@ public class LegalBaseService {
         if (existente.getArticles() == null) {
             existente.setArticles(new ArrayList<>());
         }
-        boolean sinArticulado = existente.getArticles().isEmpty();
+        Set<String> yaEscritos = existente.getArticles().stream()
+                .map(LegalBaseService::designacionDe)
+                .collect(Collectors.toSet());
+
+        // Dos pasadas de la misma regla: el payload no repite un articulo
+        // consigo mismo --50 de los 243 de la Ley 1801 entraron duplicados byte
+        // a byte, y cada repetido se come un hueco del topK del RAG, que
+        // recupera tres-- y tampoco repite uno que la norma ya tiene escrito.
         List<NationalNormArticleDTO> entrantes = Optional.ofNullable(data.articles()).orElseGet(List::of);
-
-        if (!sinArticulado || entrantes.isEmpty()) {
-            log.warn("National norm already exists, skipping: {} (articulado presente: {})",
-                    data.title(), !sinArticulado);
-            return IngestResult.alreadyExists();
-        }
-
-        // Se MUTA la coleccion que ya trae la entidad, no se reemplaza: sustituir
-        // el PersistentBag de Hibernate por una lista inmutable de toList() hace
-        // que el flush estalle con UnsupportedOperationException.
-        // La guarda de arriba es por NORMA --"ya tiene articulado"-- y no por
-        // articulo, asi que un payload que trae el mismo articulo dos veces los
-        // insertaba los dos. Medido el 18 nov 2026: 50 de los 243 articulos de
-        // la Ley 1801 estaban duplicados byte a byte, y cada repetido se comia
-        // un hueco del topK del RAG, que recupera tres.
-        List<NationalNormArticleDTO> sinRepetidos = entrantes.stream()
+        List<NationalNormArticleDTO> nuevos = entrantes.stream()
                 .filter(dto -> Objects.nonNull(dto) && Objects.nonNull(dto.content()))
                 .collect(Collectors.toMap(
                         LegalBaseService::designacionDe, dto -> dto, (primero, ignorado) -> primero,
                         LinkedHashMap::new))
-                .values().stream()
+                .entrySet().stream()
+                .filter(entrada -> !yaEscritos.contains(entrada.getKey()))
+                .map(Map.Entry::getValue)
                 .toList();
 
-        Optional.of(entrantes.size() - sinRepetidos.size())
-                .filter(repetidos -> repetidos > 0)
-                .ifPresent(repetidos -> log.warn(
-                        "Ingesta de '{}': {} articulo(s) repetidos en el payload, se guarda el primero de cada uno",
-                        data.title(), repetidos));
+        if (nuevos.isEmpty()) {
+            log.warn("Ingesta de '{}': ninguno de los {} articulo(s) del payload aporta algo nuevo, no se toca nada",
+                    data.title(), entrantes.size());
+            return IngestResult.alreadyExists();
+        }
 
-        sinRepetidos.stream()
+        Optional.of(entrantes.size() - nuevos.size())
+                .filter(descartados -> descartados > 0)
+                .ifPresent(descartados -> log.warn(
+                        "Ingesta de '{}': {} articulo(s) descartados por repetidos o ya presentes",
+                        data.title(), descartados));
+
+        // Se MUTA la coleccion que ya trae la entidad, no se reemplaza: sustituir
+        // el PersistentBag de Hibernate por una lista inmutable de toList() hace
+        // que el flush estalle con UnsupportedOperationException.
+        nuevos.stream()
                 .map(dto -> {
                     var article = nationalNormMapper.toArticleEntity(dto);
                     article.setNationalNorm(existente);
@@ -154,10 +166,16 @@ public class LegalBaseService {
                 })
                 .forEach(existente.getArticles()::add);
         nationalNormRepository.save(existente);
-        log.info("Articulado añadido a norma ya registrada: {} ({} artículos). "
-                + "Ahora sí entra al vector store y el analizador puede citarla.",
-                data.title(), sinRepetidos.size());
+        log.info("Articulado completado en norma ya registrada: {} (+{} articulos, {} en total). "
+                + "Ahora si entran al vector store y el analizador puede citarlos.",
+                data.title(), nuevos.size(), existente.getArticles().size());
         return IngestResult.articlesAdded();
+    }
+
+    private static String designacionDe(ArticleEntity entity) {
+        return Optional.ofNullable(entity.getArticleLabel())
+                .filter(label -> !label.isBlank())
+                .orElseGet(() -> ArticleLabel.fromLegacy(entity.getArticleNumber(), entity.getArticleSuffix()));
     }
 
     /** Dos articulos con la misma designacion son el mismo articulo. */

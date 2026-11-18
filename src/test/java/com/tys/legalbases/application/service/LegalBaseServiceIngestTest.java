@@ -68,6 +68,7 @@ class LegalBaseServiceIngestTest {
                 .thenAnswer(inv -> {
                     NationalNormArticleDTO dto = inv.getArgument(0);
                     var e = new ArticleEntity();
+                    e.setArticleLabel(dto.articleLabel());
                     e.setArticleNumber(dto.articleNumber());
                     e.setContent(dto.content());
                     return e;
@@ -148,5 +149,33 @@ class LegalBaseServiceIngestTest {
                 articulo(77, "texto del 77")));
 
         assertThat(entidad.getArticles()).hasSize(2);
+    }
+    /**
+     * La Ley 1801 entro con 193 de sus 243 articulos: faltaban los bloques 136
+     * a 160 y 186 a 210, donde estan las atribuciones de las autoridades de
+     * policia. La guarda por NORMA devolvia ALREADY_EXISTS y no habia forma de
+     * completarla sin tocar la base a mano. Se completa articulo por articulo,
+     * y lo que ya esta escrito no se pisa.
+     */
+    @Test
+    void aUnArticuladoParcialSoloSeLeAgregaLoQueFalta() {
+        var entidad = registradaSinArticulado();
+        var yaEscrito = new ArticleEntity();
+        yaEscrito.setArticleLabel("135");
+        yaEscrito.setContent("El texto bueno, el que ya estaba");
+        entidad.setArticles(new ArrayList<>(List.of(yaEscrito)));
+        when(nationalNormRepository.findByTitle(TITULO)).thenReturn(Optional.of(entidad));
+        mapeaLosArticulos();
+
+        IngestResult resultado = legalBaseService.ingestFromDto(conArticulado(
+                articulo(135, "no debe pisar el texto bueno"),
+                articulo(136, "Causales de agravacion..."),
+                articulo(205, "Atribuciones del alcalde...")));
+
+        assertThat(resultado.outcome()).isEqualTo(IngestResult.Outcome.ARTICLES_ADDED);
+        assertThat(entidad.getArticles()).hasSize(3);
+        assertThat(entidad.getArticles().getFirst().getContent()).isEqualTo("El texto bueno, el que ya estaba");
+        assertThat(entidad.getArticles().stream().map(ArticleEntity::getContent))
+                .doesNotContain("no debe pisar el texto bueno");
     }
 }
